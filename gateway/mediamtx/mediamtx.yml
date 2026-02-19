@@ -33,12 +33,20 @@ paths:
   sonoff-sala:
     source: rtsp://rtsp:l195I4lj@192.168.15.55:554/av_stream/ch0
     sourceOnDemand: false
+    runOnReady: >
+      ffmpeg -rtsp_transport tcp -i rtsp://localhost:8554/sonoff-sala
+      -c copy -f rtsp -rtsp_transport tcp rtsp://209.38.118.167:8554/sonoff-sala
+    runOnReadyRestart: true
 
   # Yoosee 360 — requer UDP nativo, não funciona via Docker bridge no WSL2
   # Vai funcionar no Raspberry Pi com rede nativa
   # yoosee-01:
   #   source: rtsp://admin:Oliveir4m4cedo@192.168.15.3:554/onvif1
   #   sourceOnDemand: false
+  #   runOnReady: >
+  #     ffmpeg -i rtsp://localhost:8554/yoosee-01
+  #     -c copy -f rtsp rtsp://209.38.118.167:8554/yoosee-01
+  #   runOnReadyRestart: true
 
   all_others:
     # Aceita streams publicados dinamicamente (ex: ONVIF discovery)

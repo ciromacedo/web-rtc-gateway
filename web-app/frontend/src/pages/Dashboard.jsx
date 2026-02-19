@@ -25,7 +25,7 @@ function Dashboard({ user, onLogout }) {
     <div style={styles.container}>
       <header style={styles.header}>
         <h1 style={styles.logo}>
-          Vigi<span style={styles.logoAccent}>AI</span>
+          Macedo <span style={styles.logoAccent}>SmartMesh</span>
         </h1>
         <div style={styles.userSection}>
           <span style={styles.userName}>{user.name || user.email}</span>
