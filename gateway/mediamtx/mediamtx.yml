@@ -9,30 +9,36 @@ logDestinations: [stdout]
 ###############################################
 # API
 api: true
-apiAddress: 127.0.0.1:9997
+apiAddress: :9997
 
 ###############################################
 # RTSP server (recebe streams das câmeras)
 rtsp: true
 rtspAddress: :8554
-protocols: [tcp, udp]
+rtspTransports: [tcp, udp]
 
 ###############################################
-# WebRTC (desabilitado no gateway — usa WHIP para enviar ao servidor)
-webrtc: false
+# WebRTC (habilitado para testes locais)
+webrtc: true
+webrtcAddress: :8889
 
 ###############################################
-# Paths — câmeras configuradas manualmente ou via ONVIF discovery
-# Exemplos:
-#
-# paths:
-#   camera-01:
-#     source: rtsp://admin:password@192.168.1.100:554/stream1
-#     sourceOnDemand: false
-#     runOnReady: >
-#       ffmpeg -i rtsp://localhost:$RTSP_PORT/$MTX_PATH
-#       -c copy -f whip http://SERVIDOR_CENTRAL:8889/$MTX_PATH/whip
-#
+# HLS (fallback para testes no browser)
+hls: true
+hlsAddress: :8888
+
+###############################################
+# Paths
 paths:
+  sonoff-sala:
+    source: rtsp://rtsp:l195I4lj@192.168.15.55:554/av_stream/ch0
+    sourceOnDemand: false
+
+  # Yoosee 360 — requer UDP nativo, não funciona via Docker bridge no WSL2
+  # Vai funcionar no Raspberry Pi com rede nativa
+  # yoosee-01:
+  #   source: rtsp://admin:Oliveir4m4cedo@192.168.15.3:554/onvif1
+  #   sourceOnDemand: false
+
   all_others:
-    # Aceita qualquer stream publicado
+    # Aceita streams publicados dinamicamente (ex: ONVIF discovery)

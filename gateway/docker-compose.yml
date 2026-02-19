@@ -2,8 +2,16 @@ services:
   mediamtx:
     image: bluenviron/mediamtx:latest
     container_name: gateway-mediamtx
-    network_mode: host
     restart: unless-stopped
+    ports:
+      - "8554:8554"       # RTSP
+      - "8000:8000/udp"   # RTP UDP
+      - "8001:8001/udp"   # RTCP UDP
+      - "8889:8889"       # WebRTC HTTP
+      - "8189:8189/udp"   # WebRTC ICE UDP
+      - "8888:8888"       # HLS
+      - "1935:1935"       # RTMP
+      - "9997:9997"       # API
     volumes:
       - ./mediamtx/mediamtx.yml:/mediamtx.yml
     environment:
@@ -15,7 +23,11 @@ services:
     container_name: gateway-onvif
     network_mode: host
     restart: unless-stopped
-    volumes:
-      - ./config:/app/config
+    environment:
+      - ONVIF_USER=admin
+      - ONVIF_PASSWORD=Oliveir4m4cedo
+      - MEDIAMTX_API=http://host.docker.internal:9997
+      - DISCOVERY_INTERVAL=60
+      - SCAN_RANGE=192.168.15.1-254
     depends_on:
       - mediamtx

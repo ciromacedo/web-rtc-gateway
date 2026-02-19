@@ -1,13 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-/**
- * Player WebRTC que consome um stream via WHEP do MediaMTX.
- *
- * O protocolo WHEP (WebRTC-HTTP Egress Protocol) permite iniciar
- * uma sessão WebRTC com uma simples requisição HTTP POST.
- */
 function WebRTCPlayer({ path }) {
   const videoRef = useRef(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!path) return;
@@ -29,7 +24,6 @@ function WebRTCPlayer({ path }) {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      // WHEP endpoint do MediaMTX
       const whepUrl = `/webrtc/${path}/whep`;
 
       const res = await fetch(whepUrl, {
@@ -41,13 +35,23 @@ function WebRTCPlayer({ path }) {
       if (res.ok) {
         const answer = await res.text();
         await pc.setRemoteDescription({ type: "answer", sdp: answer });
+      } else {
+        setError(true);
       }
     };
 
-    negotiate().catch(console.error);
+    negotiate().catch(() => setError(true));
 
     return () => pc.close();
   }, [path]);
+
+  if (error) {
+    return (
+      <div style={styles.errorContainer}>
+        <span style={styles.errorText}>Falha na conexão</span>
+      </div>
+    );
+  }
 
   return (
     <video
@@ -55,9 +59,30 @@ function WebRTCPlayer({ path }) {
       autoPlay
       playsInline
       muted
-      style={{ width: "100%", display: "block", background: "#000" }}
+      style={styles.video}
     />
   );
 }
+
+const styles = {
+  video: {
+    width: "100%",
+    display: "block",
+    background: "#000",
+    aspectRatio: "16/9",
+    objectFit: "contain",
+  },
+  errorContainer: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#1a1a2e",
+    aspectRatio: "16/9",
+  },
+  errorText: {
+    color: "#e94560",
+    fontSize: "0.875rem",
+  },
+};
 
 export default WebRTCPlayer;
