@@ -25,9 +25,11 @@ rtspAddress: :8554
 rtspTransports: [tcp, udp]
 
 ###############################################
-# WebRTC (habilitado para testes locais)
+# WebRTC
 webrtc: true
 webrtcAddress: :8889
+webrtcAdditionalHosts: [209.38.118.167]
+webrtcLocalUDPAddress: :8189
 
 ###############################################
 # HLS (fallback para testes no browser)
