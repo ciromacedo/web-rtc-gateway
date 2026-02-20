@@ -1,20 +1,37 @@
 import { useState } from "react";
+import { toast } from "react-toastify";
 
 function Login({ onLogin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const validate = () => {
+    if (!email.trim()) {
+      toast.error("O campo Email e obrigatorio.");
+      return false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Informe um email valido.");
+      return false;
+    }
+    if (!password) {
+      toast.error("O campo Senha e obrigatorio.");
+      return false;
+    }
+    return true;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
+    if (!validate()) return;
 
+    setLoading(true);
     try {
       await onLogin(email, password);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
@@ -32,16 +49,13 @@ function Login({ onLogin }) {
           <p style={styles.subtitle}>IoT com IA</p>
         </div>
 
-        {error && <div style={styles.error}>{error}</div>}
-
         <div style={styles.field}>
           <label style={styles.label}>Email</label>
           <input
-            type="email"
+            type="text"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="seu@email.com"
-            required
             style={styles.input}
           />
         </div>
@@ -53,7 +67,6 @@ function Login({ onLogin }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••"
-            required
             style={styles.input}
           />
         </div>
@@ -96,16 +109,6 @@ const styles = {
     color: "#a0a0a0",
     fontSize: "0.9rem",
     marginTop: "0.25rem",
-  },
-  error: {
-    background: "rgba(233, 69, 96, 0.15)",
-    border: "1px solid #e94560",
-    color: "#ff6b6b",
-    padding: "0.75rem",
-    borderRadius: "6px",
-    marginBottom: "1rem",
-    fontSize: "0.875rem",
-    textAlign: "center",
   },
   field: {
     marginBottom: "1.25rem",

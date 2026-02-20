@@ -1,7 +1,13 @@
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import UserList from "./pages/UserList.jsx";
+import UserCreate from "./pages/UserCreate.jsx";
+import UserEdit from "./pages/UserEdit.jsx";
+import Layout from "./components/Layout.jsx";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -62,25 +68,65 @@ function App() {
     );
   }
 
+  const ProtectedRoute = ({ children }) => {
+    if (!user) return <Navigate to="/login" />;
+    return (
+      <Layout user={user} onLogout={handleLogout}>
+        {children}
+      </Layout>
+    );
+  };
+
   return (
+    <>
+    <ToastContainer
+      position="top-right"
+      autoClose={4000}
+      hideProgressBar={false}
+      newestOnTop
+      closeOnClick
+      pauseOnHover
+      theme="dark"
+    />
     <Routes>
       <Route
         path="/login"
-        element={
-          user ? <Navigate to="/" /> : <Login onLogin={handleLogin} />
-        }
+        element={user ? <Navigate to="/" /> : <Login onLogin={handleLogin} />}
       />
       <Route
         path="/"
         element={
-          user ? (
-            <Dashboard user={user} onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" />
-          )
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/users"
+        element={
+          <ProtectedRoute>
+            <UserList />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/users/new"
+        element={
+          <ProtectedRoute>
+            <UserCreate />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/users/:id/edit"
+        element={
+          <ProtectedRoute>
+            <UserEdit />
+          </ProtectedRoute>
         }
       />
     </Routes>
+    </>
   );
 }
 

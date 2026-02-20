@@ -9,8 +9,6 @@ smartmesh.drmacedo.tech {
     }
 
     handle {
-        root * /opt/web-rtc-gateway/web-app/frontend/dist
-        try_files {path} /index.html
-        file_server
+        reverse_proxy localhost:80
     }
 }
