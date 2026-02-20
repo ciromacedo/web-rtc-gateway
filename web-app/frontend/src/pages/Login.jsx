@@ -25,11 +25,11 @@ function Login({ onLogin }) {
       <form onSubmit={handleSubmit} style={styles.form}>
         <div style={styles.logoSection}>
           <img
-            src="/images/MacedoSmartMesh.png"
+            src="/images/MacedoSmartMeshLogo.png"
             alt="Macedo SmartMesh"
             style={styles.logoImage}
           />
-          <p style={styles.subtitle}>Videovigilância Inteligente</p>
+          <p style={styles.subtitle}>IoT com IA</p>
         </div>
 
         {error && <div style={styles.error}>{error}</div>}
