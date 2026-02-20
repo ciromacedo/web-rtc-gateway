@@ -17,6 +17,26 @@ services:
       timeout: 3s
       retries: 5
 
+  mediamtx:
+    image: bluenviron/mediamtx:latest-ffmpeg
+    container_name: smartmech-mediamtx
+    restart: unless-stopped
+    ports:
+      - "8554:8554"       # RTSP
+      - "8000:8000/udp"   # RTP UDP
+      - "8001:8001/udp"   # RTCP UDP
+      - "8889:8889"       # WebRTC HTTP
+      - "8189:8189/udp"   # WebRTC ICE UDP
+      - "8888:8888"       # HLS
+      - "1935:1935"       # RTMP
+      - "9997:9997"       # API
+    volumes:
+      - ../gateway/mediamtx/mediamtx.yml:/mediamtx.yml
+    environment:
+      - MTX_LOGLEVEL=info
+    networks:
+      - smartmech
+
   backend:
     build:
       context: ./backend
@@ -27,10 +47,12 @@ services:
     environment:
       - DATABASE_URL=postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-webrtc_gateway}
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
-      - MEDIAMTX_API=${MEDIAMTX_API:-http://host.docker.internal:9997}
+      - MEDIAMTX_API=http://mediamtx:9997
     depends_on:
       postgres:
         condition: service_healthy
+      mediamtx:
+        condition: service_started
     networks:
       - smartmech
 

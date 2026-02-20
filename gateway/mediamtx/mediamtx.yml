@@ -10,6 +10,13 @@ logDestinations: [stdout]
 # API
 api: true
 apiAddress: :9997
+authInternalUsers:
+  - user: any
+    permissions:
+      - action: api
+      - action: publish
+      - action: read
+      - action: playback
 
 ###############################################
 # RTSP server (recebe streams das câmeras)
@@ -29,16 +36,6 @@ hlsAddress: :8888
 
 ###############################################
 # Paths
-# Credenciais das cameras e IP do servidor devem estar no .env
-# Use variavel de ambiente SONOFF_RTSP_URL e RELAY_SERVER
 paths:
-  sonoff-sala:
-    source: $SONOFF_RTSP_URL
-    sourceOnDemand: false
-    runOnReady: >
-      ffmpeg -rtsp_transport tcp -i rtsp://localhost:8554/sonoff-sala
-      -c copy -f rtsp -rtsp_transport tcp rtsp://$RELAY_SERVER:8554/sonoff-sala
-    runOnReadyRestart: true
-
   all_others:
     # Aceita streams publicados dinamicamente (ex: ONVIF discovery)
