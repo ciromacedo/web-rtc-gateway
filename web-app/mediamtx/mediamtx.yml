@@ -25,12 +25,10 @@ rtspAddress: :8554
 # WebRTC (serve para o browser via WHEP)
 webrtc: true
 webrtcAddress: :8889
+webrtcAdditionalHosts: [209.38.118.167]
+webrtcLocalUDPAddress: :8189
 webrtcICEServers2:
   - url: stun:stun.l.google.com:19302
-  # TODO: Configurar TURN server próprio
-  # - url: turn:SEU_IP:3478
-  #   username: webrtc
-  #   password: secret
 
 ###############################################
 # Paths — recebe streams dos gateways via WHIP
