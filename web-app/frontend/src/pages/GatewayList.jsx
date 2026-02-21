@@ -7,6 +7,7 @@ function GatewayList() {
   const [gateways, setGateways] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState(null);
+  const [toggleId, setToggleId] = useState(null);
 
   const token = localStorage.getItem("token");
 
@@ -28,7 +29,9 @@ function GatewayList() {
     fetchGateways();
   }, []);
 
-  const handleToggle = (id) => {
+  const handleToggle = () => {
+    if (!toggleId) return;
+    const id = toggleId;
     fetch(`/api/gateways/${id}/toggle`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -41,9 +44,13 @@ function GatewayList() {
       .then((data) => {
         const status = data.gateway.active ? "ativado" : "desativado";
         toast.success(`Gateway ${status} com sucesso!`);
+        setToggleId(null);
         fetchGateways();
       })
-      .catch((err) => toast.error(err.message));
+      .catch((err) => {
+        toast.error(err.message);
+        setToggleId(null);
+      });
   };
 
   const handleDelete = () => {
@@ -113,7 +120,7 @@ function GatewayList() {
                   <td style={{ ...styles.td, textAlign: "center" }}>
                     <button
                       style={styles.iconBtn}
-                      onClick={() => handleToggle(g.id)}
+                      onClick={() => setToggleId(g.id)}
                       title={g.active ? "Desativar" : "Ativar"}
                     >
                       {g.active ? (
@@ -145,6 +152,13 @@ function GatewayList() {
           </table>
         </div>
       )}
+
+      <ConfirmModal
+        open={toggleId !== null}
+        message="Deseja alterar o status do gateway? Isso encerrará o stream imediatamente se estiver ativo."
+        onConfirm={handleToggle}
+        onCancel={() => setToggleId(null)}
+      />
 
       <ConfirmModal
         open={deleteId !== null}
