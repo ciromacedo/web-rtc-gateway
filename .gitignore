@@ -28,9 +28,9 @@ Thumbs.db
 # Docker
 docker-compose.override.yml
 
-# Camera config (contains credentials)
-gateway/config/cameras.yml
-!gateway/config/cameras.yml.example
+# IoT devices config (contains credentials)
+gateway/config/iot_devices.yml
+!gateway/config/iot_devices.yml.example
 
 # Certificates and secrets
 *.pem

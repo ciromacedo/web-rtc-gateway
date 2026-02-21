@@ -13,6 +13,8 @@ import GatewayCreate from "./pages/GatewayCreate.jsx";
 import OrganizationList from "./pages/OrganizationList.jsx";
 import OrganizationCreate from "./pages/OrganizationCreate.jsx";
 import OrganizationEdit from "./pages/OrganizationEdit.jsx";
+import IotDeviceList from "./pages/IotDeviceList.jsx";
+import IotDeviceEdit from "./pages/IotDeviceEdit.jsx";
 import Layout from "./components/Layout.jsx";
 
 function App() {
@@ -174,6 +176,22 @@ function App() {
         element={
           <ProtectedRoute>
             <OrganizationEdit />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/iot-devices"
+        element={
+          <ProtectedRoute>
+            <IotDeviceList />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/iot-devices/:id/edit"
+        element={
+          <ProtectedRoute>
+            <IotDeviceEdit />
           </ProtectedRoute>
         }
       />

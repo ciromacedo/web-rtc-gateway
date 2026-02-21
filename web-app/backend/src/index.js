@@ -11,6 +11,7 @@ fastify.register(require("./services/UserService"));
 fastify.register(require("./services/TokenService"));
 fastify.register(require("./services/GatewayService"));
 fastify.register(require("./services/OrganizationService"));
+fastify.register(require("./services/IotDeviceService"));
 
 // --- Health check ---
 fastify.register(async function routes(app) {

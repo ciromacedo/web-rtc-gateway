@@ -1,8 +1,8 @@
 #!/bin/sh
-# Entrypoint: valida API key, gera mediamtx.yml a partir do template base + cameras.yml
+# Entrypoint: valida API key, registra dispositivos IoT, gera mediamtx.yml
 set -eu
 
-CONFIG_FILE="/config/cameras.yml"
+CONFIG_FILE="/config/iot_devices.yml"
 BASE_CONFIG="/mediamtx.base.yml"
 FINAL_CONFIG="/mediamtx.yml"
 
@@ -36,29 +36,42 @@ else
     exit 1
 fi
 
+# Registra dispositivos IoT no backend
+echo "Registrando dispositivos IoT no backend..."
+DEVICE_COUNT=$(yq '.devices | length' "$CONFIG_FILE")
+
+if [ "$DEVICE_COUNT" -gt 0 ]; then
+    DEVICES_JSON=$(yq -o=json '.devices' "$CONFIG_FILE")
+    REGISTER_PAYLOAD="{\"api_key\":\"$API_KEY\",\"devices\":$DEVICES_JSON}"
+    REGISTER_RESPONSE=$(wget -qO- \
+        --post-data="$REGISTER_PAYLOAD" \
+        --header="Content-Type: application/json" \
+        "http://$RELAY_SERVER:3000/api/iot-devices/register" 2>/dev/null) || true
+    echo "Resposta do registro: $REGISTER_RESPONSE"
+else
+    echo "AVISO: Nenhum dispositivo definido em $CONFIG_FILE"
+fi
+
 # Copia config base
 cp "$BASE_CONFIG" "$FINAL_CONFIG"
 
-# Inicia secao de paths
+# Inicia secao de paths (apenas dispositivos do tipo CAMERA)
 echo "" >> "$FINAL_CONFIG"
 echo "###############################################" >> "$FINAL_CONFIG"
-echo "# Paths (gerado automaticamente de cameras.yml)" >> "$FINAL_CONFIG"
+echo "# Paths (gerado automaticamente de iot_devices.yml)" >> "$FINAL_CONFIG"
 echo "paths:" >> "$FINAL_CONFIG"
 
-# Le cada camera e gera path
-CAMERA_COUNT=$(yq '.cameras | length' "$CONFIG_FILE")
+CAMERA_COUNT=0
+for i in $(seq 0 $((DEVICE_COUNT - 1))); do
+    TYPE=$(yq ".devices[$i].type" "$CONFIG_FILE")
+    if [ "$TYPE" = "CAMERA" ]; then
+        NAME=$(yq ".devices[$i].name" "$CONFIG_FILE")
+        URL=$(yq ".devices[$i].url" "$CONFIG_FILE")
 
-if [ "$CAMERA_COUNT" -eq 0 ]; then
-    echo "AVISO: Nenhuma camera definida em $CONFIG_FILE"
-fi
+        echo "Configurando camera: $NAME ($URL)"
+        CAMERA_COUNT=$((CAMERA_COUNT + 1))
 
-for i in $(seq 0 $((CAMERA_COUNT - 1))); do
-    NAME=$(yq ".cameras[$i].name" "$CONFIG_FILE")
-    URL=$(yq ".cameras[$i].url" "$CONFIG_FILE")
-
-    echo "Configurando camera: $NAME ($URL)"
-
-    cat >> "$FINAL_CONFIG" <<EOF
+        cat >> "$FINAL_CONFIG" <<EOF
   $NAME:
     source: $URL
     sourceOnDemand: false
@@ -68,7 +81,12 @@ for i in $(seq 0 $((CAMERA_COUNT - 1))); do
       rtsp://gateway:$API_KEY@$RELAY_SERVER:8554/$NAME
     runOnReadyRestart: true
 EOF
+    fi
 done
+
+if [ "$CAMERA_COUNT" -eq 0 ]; then
+    echo "AVISO: Nenhum dispositivo do tipo CAMERA definido"
+fi
 
 # Adiciona path generico para streams dinamicos
 cat >> "$FINAL_CONFIG" <<EOF

@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     network_mode: host
     volumes:
-      - ./config/cameras.yml:/config/cameras.yml:ro
+      - ./config/iot_devices.yml:/config/iot_devices.yml:ro
       - ./mediamtx/mediamtx.base.yml:/mediamtx.base.yml:ro
     environment:
       - MTX_LOGLEVEL=info
