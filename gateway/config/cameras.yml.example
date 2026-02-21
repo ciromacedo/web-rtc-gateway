@@ -1,5 +1,0 @@
-cameras:
-  - name: camera-1
-    url: rtsp://user:password@192.168.1.100:554/stream
-  - name: camera-2
-    url: rtsp://user:password@192.168.1.101:554/stream
