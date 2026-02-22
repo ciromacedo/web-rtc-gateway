@@ -23,7 +23,6 @@ authInternalUsers:
 # RTSP server (recebe streams das cameras)
 rtsp: true
 rtspAddress: :8554
-rtspTransports: [tcp, udp]
 
 ###############################################
 # WebRTC

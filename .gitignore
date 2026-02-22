@@ -32,6 +32,14 @@ docker-compose.override.yml
 gateway/config/iot_devices.yml
 !gateway/config/iot_devices.yml.example
 
+# Gateway nativo — arquivos locais
+gateway-native/.env
+gateway-native/iot_devices.yml
+!gateway-native/iot_devices.yml.example
+gateway-native/mediamtx
+gateway-native/mediamtx.yml
+gateway-native/mediamtx.base.yml
+
 # Certificates and secrets
 *.pem
 *.key
