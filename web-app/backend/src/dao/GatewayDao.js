@@ -4,7 +4,7 @@ class GatewayDao {
   async findAll() {
     const result = await getPool().query(
       `SELECT g.id, g.name, g.api_key_prefix, g.active, g.created_at, g.last_seen_at,
-              g.organizacao_fk, o.description AS organization_description
+              g.organizacao_fk, g.local_api_url, o.description AS organization_description
        FROM gateways g
        LEFT JOIN organizations o ON o.id = g.organizacao_fk
        ORDER BY g.created_at DESC`
@@ -15,7 +15,7 @@ class GatewayDao {
   async findById(id) {
     const result = await getPool().query(
       `SELECT g.id, g.name, g.api_key_hash, g.api_key_prefix, g.active, g.created_at, g.last_seen_at,
-              g.organizacao_fk, o.description AS organization_description
+              g.organizacao_fk, g.local_api_url, o.description AS organization_description
        FROM gateways g
        LEFT JOIN organizations o ON o.id = g.organizacao_fk
        WHERE g.id = $1`,
@@ -45,6 +45,13 @@ class GatewayDao {
     await getPool().query(
       "UPDATE gateways SET last_seen_at = NOW() WHERE id = $1",
       [id]
+    );
+  }
+
+  async updateLocalApiUrl(id, url) {
+    await getPool().query(
+      "UPDATE gateways SET local_api_url = $1 WHERE id = $2",
+      [url, id]
     );
   }
 

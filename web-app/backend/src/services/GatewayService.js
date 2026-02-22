@@ -1,4 +1,5 @@
 const GatewayBusiness = require("../business/GatewayBusiness");
+const GatewayDao = require("../dao/GatewayDao");
 
 async function gatewayService(fastify) {
   const auth = { onRequest: [fastify.authenticate] };
@@ -51,12 +52,15 @@ async function gatewayService(fastify) {
   // POST /api/gateways/auth — gateway valida sua key (público)
   fastify.post("/api/gateways/auth", async (request, reply) => {
     try {
-      const { api_key } = request.body || {};
+      const { api_key, local_api_url } = request.body || {};
       const gateway = await GatewayBusiness.validateApiKey(api_key);
       if (!gateway) {
         return reply.code(401).send({ error: "API key inválida ou gateway inativo" });
       }
-      return { valid: true, name: gateway.name };
+      if (local_api_url) {
+        await GatewayDao.updateLocalApiUrl(gateway.id, local_api_url);
+      }
+      return { valid: true, id: gateway.id, name: gateway.name };
     } catch (err) {
       return reply.code(500).send({ error: "Erro interno" });
     }

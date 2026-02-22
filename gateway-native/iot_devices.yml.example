@@ -2,6 +2,7 @@ devices:
   - name: camera-sala
     type: CAMERA
     url: rtsp://user:password@192.168.1.100:554/stream
+    # onvif_port: 5000   # descomente para habilitar controle PTZ (pan/tilt) via ONVIF
   - name: sensor-entrada
     type: SENSOR_PRESENCA
   - name: tomada-escritorio

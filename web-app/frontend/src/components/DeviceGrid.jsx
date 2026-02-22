@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import WebRTCPlayer from "./WebRTCPlayer.jsx";
 
@@ -70,11 +71,46 @@ const DEFAULT_CONFIG = {
   ),
 };
 
+// ─── Controles PTZ ────────────────────────────────────────────────────────────
+
+function PtzControls({ device, visible }) {
+  const sendPtz = (direction) => {
+    fetch(`${device.gateway_local_api_url}/ptz`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ camera_name: device.name, direction }),
+    }).catch(() => {});
+  };
+
+  return (
+    <div style={{ ...styles.ptzOverlay, opacity: visible ? 1 : 0 }}>
+      <div style={styles.ptzGrid}>
+        <div />
+        <button style={styles.ptzBtn} onClick={() => sendPtz("up")} title="Cima">▲</button>
+        <div />
+        <button style={styles.ptzBtn} onClick={() => sendPtz("left")} title="Esquerda">◀</button>
+        <button style={styles.ptzBtn} onClick={() => sendPtz("home")} title="Home">⌂</button>
+        <button style={styles.ptzBtn} onClick={() => sendPtz("right")} title="Direita">▶</button>
+        <div />
+        <button style={styles.ptzBtn} onClick={() => sendPtz("down")} title="Baixo">▼</button>
+        <div />
+      </div>
+    </div>
+  );
+}
+
 // ─── Card: Câmera ─────────────────────────────────────────────────────────────
 
 function CameraCard({ device, cfg, navigate }) {
+  const [hovered, setHovered] = useState(false);
+  const hasPtz = !!device.gateway_local_api_url;
+
   return (
-    <div style={{ ...styles.card, borderColor: cfg.color }}>
+    <div
+      style={{ ...styles.card, borderColor: cfg.color, position: "relative" }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <div style={{ ...styles.cardHeader, background: cfg.headerBg }}>
         <div style={styles.headerLeft}>
           {cfg.icon}
@@ -107,6 +143,8 @@ function CameraCard({ device, cfg, navigate }) {
           <span style={styles.offlineText}>Offline</span>
         </div>
       )}
+
+      {hasPtz && <PtzControls device={device} visible={hovered} />}
 
       <div style={styles.cardFooter}>
         <span style={styles.gatewayLabel}>{device.gateway_name}</span>
@@ -335,6 +373,34 @@ const styles = {
   expandBtnDisabled: {
     opacity: 0.2,
     cursor: "default",
+  },
+  ptzOverlay: {
+    position: "absolute",
+    bottom: "36px", // acima do cardFooter
+    right: "8px",
+    transition: "opacity 0.2s ease",
+    pointerEvents: "auto",
+  },
+  ptzGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 28px)",
+    gridTemplateRows: "repeat(3, 28px)",
+    gap: "2px",
+  },
+  ptzBtn: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "28px",
+    height: "28px",
+    background: "rgba(0,0,0,0.55)",
+    border: "1px solid rgba(255,255,255,0.2)",
+    borderRadius: "4px",
+    color: "white",
+    fontSize: "12px",
+    cursor: "pointer",
+    padding: 0,
+    lineHeight: 1,
   },
 };
 

@@ -4,7 +4,7 @@ class IotDeviceDao {
   async findAll() {
     const { rows } = await getPool().query(
       `SELECT d.id, d.name, d.type, d.description, d.gateway_id,
-              g.name AS gateway_name
+              g.name AS gateway_name, g.local_api_url AS gateway_local_api_url
        FROM iot_devices d
        JOIN gateways g ON g.id = d.gateway_id
        ORDER BY g.name, d.type, d.name`
@@ -15,7 +15,7 @@ class IotDeviceDao {
   async findById(id) {
     const { rows } = await getPool().query(
       `SELECT d.id, d.name, d.type, d.description, d.gateway_id,
-              g.name AS gateway_name
+              g.name AS gateway_name, g.local_api_url AS gateway_local_api_url
        FROM iot_devices d
        JOIN gateways g ON g.id = d.gateway_id
        WHERE d.id = $1`,

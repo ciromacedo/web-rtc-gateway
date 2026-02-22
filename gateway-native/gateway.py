@@ -5,23 +5,34 @@ Equivalente ao entrypoint.sh + container mediamtx, mas rodando nativamente.
 
 Fluxo:
   1. Lê iot_devices.yml
-  2. Autentica API key no backend
+  2. Autentica API key no backend (registra local_api_url para PTZ)
   3. Registra dispositivos IoT no backend
   4. Gera mediamtx.yml com os paths de câmeras RTSP
   5. Inicia o binário mediamtx como subprocesso
-  6. Monitora e reinicia se cair
+  6. Sobe HTTP API na porta 9000 para comandos PTZ (thread separada)
+  7. Monitora e reinicia se cair
 """
 
+import http.server
 import json
 import os
 import signal
+import socket
 import subprocess
 import sys
+import threading
 import time
+import urllib.parse
 from pathlib import Path
 
 import requests
 import yaml
+
+try:
+    from onvif import ONVIFCamera
+    ONVIF_AVAILABLE = True
+except ImportError:
+    ONVIF_AVAILABLE = False
 
 # ─── Configuração ─────────────────────────────────────────────────────────────
 
@@ -35,6 +46,7 @@ RELAY_SERVER = os.environ.get("RELAY_SERVER", "")
 API_KEY      = os.environ.get("API_KEY", "")
 
 BACKEND_URL  = f"http://{RELAY_SERVER}:3000"
+PTZ_PORT     = 9000
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -47,14 +59,31 @@ def die(msg):
     sys.exit(1)
 
 
+def get_local_ip():
+    """Detecta o IP local usado para alcançar o relay server."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect((RELAY_SERVER, 3000))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception as e:
+        log(f"Aviso: não foi possível detectar IP local: {e}")
+        return "127.0.0.1"
+
+
 # ─── Backend ──────────────────────────────────────────────────────────────────
 
-def authenticate():
+def authenticate(local_api_url=None):
     log("Autenticando no backend...")
+    body = {"api_key": API_KEY}
+    if local_api_url:
+        body["local_api_url"] = local_api_url
+
     try:
         resp = requests.post(
             f"{BACKEND_URL}/api/gateways/auth",
-            json={"api_key": API_KEY},
+            json=body,
             timeout=10,
         )
         data = resp.json()
@@ -82,6 +111,140 @@ def register_devices(devices):
     except Exception as e:
         log(f"Aviso: falha ao registrar dispositivos — {e}")
         return {}
+
+
+# ─── ONVIF PTZ ────────────────────────────────────────────────────────────────
+
+def build_onvif_cameras(devices):
+    """Instancia câmeras ONVIF para dispositivos com onvif_port definido."""
+    if not ONVIF_AVAILABLE:
+        has_ptz = any(d.get("onvif_port") for d in devices if d.get("type") == "CAMERA")
+        if has_ptz:
+            log("Aviso: onvif-zeep não instalado. Execute: pip3 install onvif-zeep")
+        return {}
+
+    cameras = {}
+    for device in devices:
+        if device.get("type") != "CAMERA":
+            continue
+        onvif_port = device.get("onvif_port")
+        if not onvif_port:
+            continue
+
+        name = device.get("name", "")
+        url  = device.get("url", "")
+        if not name or not url:
+            continue
+
+        try:
+            parsed   = urllib.parse.urlparse(url)
+            host     = parsed.hostname
+            user     = parsed.username or ""
+            password = parsed.password or ""
+
+            cam = ONVIFCamera(host, onvif_port, user, password)
+            ptz = cam.create_ptz_service()
+
+            media    = cam.create_media_service()
+            profiles = media.GetProfiles()
+            token    = profiles[0].token
+
+            cameras[name] = {"ptz": ptz, "token": token}
+            log(f"ONVIF PTZ configurado: {name} ({host}:{onvif_port})")
+        except Exception as e:
+            log(f"Aviso: falha ao configurar ONVIF para {name}: {e}")
+
+    return cameras
+
+
+def make_ptz_handler(onvif_cameras):
+    """Cria classe de handler HTTP com acesso ao mapa de câmeras ONVIF."""
+
+    class PTZHandler(http.server.BaseHTTPRequestHandler):
+
+        _cameras = onvif_cameras
+
+        _MOVES = {
+            "up":    (0.0,  0.1),
+            "down":  (0.0, -0.1),
+            "left":  (-0.1, 0.0),
+            "right": ( 0.1, 0.0),
+        }
+
+        def do_OPTIONS(self):
+            self.send_response(200)
+            self._cors()
+            self.end_headers()
+
+        def do_POST(self):
+            if self.path != "/ptz":
+                self.send_response(404)
+                self.end_headers()
+                return
+
+            length = int(self.headers.get("Content-Length", 0))
+            body   = json.loads(self.rfile.read(length)) if length else {}
+
+            camera_name = body.get("camera_name", "")
+            direction   = body.get("direction", "")
+
+            cam = self._cameras.get(camera_name)
+            if cam is None:
+                self._respond(404, {"error": "camera not found or PTZ not configured"})
+                return
+
+            try:
+                ptz   = cam["ptz"]
+                token = cam["token"]
+
+                if direction == "home":
+                    req = ptz.create_type("GotoHomePosition")
+                    req.ProfileToken = token
+                    req.Speed = None
+                    ptz.GotoHomePosition(req)
+                elif direction in self._MOVES:
+                    dx, dy = self._MOVES[direction]
+                    req = ptz.create_type("RelativeMove")
+                    req.ProfileToken = token
+                    req.Translation  = {
+                        "PanTilt": {"x": dx, "y": dy},
+                        "Zoom":    {"x": 0.0},
+                    }
+                    ptz.RelativeMove(req)
+                else:
+                    self._respond(400, {"error": "invalid direction"})
+                    return
+
+                self._respond(200, {"ok": True})
+            except Exception as e:
+                log(f"Erro PTZ ({camera_name}, {direction}): {e}")
+                self._respond(500, {"error": "ptz error"})
+
+        def _respond(self, code, data):
+            self.send_response(code)
+            self._cors()
+            self.end_headers()
+            self.wfile.write(json.dumps(data).encode())
+
+        def _cors(self):
+            self.send_header("Access-Control-Allow-Origin",  "*")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Content-Type", "application/json")
+
+        def log_message(self, format, *args):
+            pass  # silencia log de acesso padrão
+
+    return PTZHandler
+
+
+def start_ptz_server(onvif_cameras):
+    """Sobe ThreadingHTTPServer na porta PTZ_PORT em daemon thread."""
+    handler = make_ptz_handler(onvif_cameras)
+    server  = http.server.ThreadingHTTPServer(("0.0.0.0", PTZ_PORT), handler)
+    t = threading.Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    return server
 
 
 # ─── Configuração MediaMTX ────────────────────────────────────────────────────
@@ -114,8 +277,9 @@ def build_mediamtx_config(devices):
             "source": url,
             "sourceOnDemand": False,
             "runOnReady": (
-                f"ffmpeg -rtsp_transport tcp -i rtsp://localhost:8554/{name} "
-                f"-c copy -f rtsp -rtsp_transport tcp "
+                f"ffmpeg -analyzeduration 5000000 -probesize 5000000 "
+                f"-rtsp_transport tcp -i rtsp://localhost:8554/{name} "
+                f"-map 0 -c copy -f rtsp -rtsp_transport tcp "
                 f"rtsp://gateway:{API_KEY}@{RELAY_SERVER}:8554/{name}"
             ),
             "runOnReadyRestart": True,
@@ -194,10 +358,19 @@ def main():
     devices = raw.get("devices", [])
     log(f"{len(devices)} dispositivo(s) em {CONFIG_FILE}")
 
+    # Detecta IP local e monta URL da API PTZ
+    local_ip      = get_local_ip()
+    local_api_url = f"http://{local_ip}:{PTZ_PORT}"
+
     # Fluxo principal
-    authenticate()
+    authenticate(local_api_url=local_api_url)
     register_devices(devices)
     build_mediamtx_config(devices)
+
+    # Inicia API PTZ (daemon thread)
+    onvif_cameras = build_onvif_cameras(devices)
+    start_ptz_server(onvif_cameras)
+    log(f"PTZ API em {local_api_url}")
 
     # Signals
     signal.signal(signal.SIGINT, shutdown)
